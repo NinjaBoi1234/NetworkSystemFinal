@@ -1,29 +1,31 @@
 import java.net.Socket;
-// To read from and write to the socket
-import java.io.IOException;
-// TO handle exceptions
+import java.io.BufferedReader;
 import java.io.InputStreamReader;
-//convert the byte stream to character stream
 import java.io.PrintWriter;
-//class to write formatted data to the stream
 
 public class ChatClient {
-    public static void main(String[] args){
-        if (args.length != 3){
-            System.out.println("Usage: java ChatClient <server address> <port number> <username>");
+
+    public static void main(String[] args) throws Exception {
+
+        if (args.length != 3) {
+            System.out.println("Usage: java ChatClient <server_ip> <port> <username>");
             return;
         }
 
         String serverIp = args[0];
-        int serverPort = Integer.parseInt(args[1]);
+        int port = Integer.parseInt(args[1]);
         String username = args[2];
 
-        Socket socket = new Socket(serverIp, serverPort);
-        // Create a socket to connect to the servercan you
-        BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in));
-        // To read user input from the console
-        PrinterWriter out = new PrintWriter(socket.getOutputStream(), true);
-        // To send messages to the server
-        
+        Socket socket = new Socket(serverIp, port);
+
+        BufferedReader serverIn =
+                new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        PrintWriter serverOut =
+                new PrintWriter(socket.getOutputStream(), true);
+
+        serverOut.println("LOGIN " + username);
+
+        new Thread(new ServerMessageReceiver(serverIn)).start();
+        new Thread(new UserInputHandler(serverOut)).start();
     }
 }
