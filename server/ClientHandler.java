@@ -6,55 +6,60 @@ import java.net.Socket;
 
 public class ClientHandler implements Runnable {
 
-    private Socket clientSocket;
-    private BufferedReader in;
-    private PrintWriter out;
+    private final Socket socket;
 
     public ClientHandler(Socket socket) {
-        this.clientSocket = socket;
+        this.socket = socket;
     }
 
     @Override
     public void run() {
         try {
-            // 入出力ストリームの準備
-            in = new BufferedReader(
-                    new InputStreamReader(clientSocket.getInputStream())
+            BufferedReader in = new BufferedReader(
+                    new InputStreamReader(socket.getInputStream())
             );
-            out = new PrintWriter(clientSocket.getOutputStream(), true);
+            PrintWriter out = new PrintWriter(
+                    socket.getOutputStream(), true
+            );
 
-            out.println("Welcome to the Chat Server!");
-            out.println("Type 'exit' to quit.");
+            // ---- Username handshake ----
+            out.println("Enter username:");
+            String username = in.readLine();
 
+            if (username == null || username.isBlank()) {
+                socket.close();
+                return;
+            }
+
+            out.println("[SERVER] Welcome " + username);
+
+            // ---- Main message loop ----
             String line;
-
-            // クライアントからの入力を待ち続ける
             while ((line = in.readLine()) != null) {
 
-                // 終了コマンド
-                if (line.equalsIgnoreCase("exit")) {
-                    out.println("Goodbye!");
+                // quit command
+                if (line.equalsIgnoreCase("/quit") ||
+                    line.equalsIgnoreCase("exit")) {
+                    out.println("[SERVER] Bye!");
                     break;
                 }
 
-                // とりあえず echo（後で broadcast / DM に変更）
-                System.out.println(
-                        "[CLIENT " + clientSocket.getRemoteSocketAddress() + "] " + line
-                );
-                out.println("Server received: " + line);
+                // Echo back to client
+                out.println(username + ": " + line);
+
+                // Log on server
+                System.out.println("[" + username + "] " + line);
             }
 
         } catch (IOException e) {
-            System.out.println("Client error: " + e.getMessage());
+            System.out.println("[SERVER] Client error: " + e.getMessage());
+
         } finally {
-            // 後始末
             try {
-                if (clientSocket != null) {
-                    clientSocket.close();
-                }
-            } catch (IOException e) {
-                System.out.println("Error closing socket");
-            }
+                socket.close();
+            } catch (IOException ignored) {}
+
+            System.out.println("[SERVER] Client disconnected");
         }
     }
 }
